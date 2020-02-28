@@ -3,7 +3,7 @@ Using JPype1 and jaydebeapi with JDBC to make queries and streaming the results.
 
 The connector is currently using the JDBC for AS400. 
 
-# SESAM SYSTEM CONFIG #
+## SESAM SYSTEM CONFIG ##
 
 {
   "_id": "<system-name>",
@@ -22,7 +22,7 @@ The connector is currently using the JDBC for AS400.
   }
 }
 
-# SESAM PIPE CONFIG #
+## SESAM PIPE CONFIG ##
 {
   "_id": "<PIPE-ID>",
   "type": "pipe",
