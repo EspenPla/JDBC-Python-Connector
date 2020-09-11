@@ -46,14 +46,19 @@ def stream_as_json(generator_function):
         yield json.dumps(item)
     yield ']'
 
-def connection(id, lm, dbtable, since):
+def connection(id, lm, dbtable, since, where):
     try:
         conn = get_jdbc_connection()
         count = 0
+        logger.info(f'WHERE {lm} > {since}  ORDER BY {lm}')
         curs = conn.cursor()
-        curs.execute(f'SELECT CAST({id} AS VARCHAR(20)) AS \"_id\", {lm} AS \"_updated\", {dbtable}.* FROM {dbtable} WHERE {lm} > {since} ORDER BY {lm}')
+        if where is None:
+            logger.info(f'SELECT CAST({id} AS VARCHAR(20)) AS \"_id\", {lm} AS \"_updated\", {dbtable}.* FROM {dbtable} WHERE {lm} > {since}  ORDER BY {lm}')
+            curs.execute(f'SELECT CAST({id} AS VARCHAR(20)) AS \"_id\", {lm} AS \"_updated\", {dbtable}.* FROM {dbtable} WHERE {lm} > {since} ORDER BY {lm}')
+        else:    
+            logger.info(f'SELECT CAST({id} AS VARCHAR(20)) AS \"_id\", {lm} AS \"_updated\", {dbtable}.* FROM {dbtable} WHERE {lm} > {since}  AND {where} ORDER BY {lm}')
+            curs.execute(f'SELECT CAST({id} AS VARCHAR(20)) AS \"_id\", {lm} AS \"_updated\", {dbtable}.* FROM {dbtable} WHERE {lm} > {since} AND {where} ORDER BY {lm}')
         logger.info('Query sent: ')
-        logger.info(f'SELECT CAST({id} AS VARCHAR(20)) AS \"_id\", {lm} AS \"_updated\", {dbtable}.* FROM {dbtable} WHERE {lm} > {since} ORDER BY {lm}')
         
         # rowcount = curs.rowcount()
         # logger.info(".rowcount = "+ str(rowcount))
@@ -64,8 +69,8 @@ def connection(id, lm, dbtable, since):
         logger.info('Columns fetched! Starting entity stream...')
         while len(dataset) > 0:
             yieldcount = 0
-            for row in dataset:
-                yield dict(zip(header, row))
+            for v in dataset:
+                yield dict(zip(header, (row.strip() if isinstance(row,str) else row for row in v)))
                 count += 1
                 yieldcount += 1 
             logger.info(f'Yielded {yieldcount} rows')
@@ -93,18 +98,22 @@ def get():
     lm = request.args.get('lm')
     id = request.args.get('id')
     table = request.args.get('table')
-    since = request.args.get('since')
+    if request.args.get('since') is None:
+        since = 0
+    else: 
+        since = request.args.get('since')
+    where = request.args.get('where')
     dbtable = f"{db}.{table}"
 
     try: 
-        return Response(stream_as_json(connection(id,lm,dbtable, since)), mimetype='application/json')
+        return Response(stream_as_json(connection(id,lm,dbtable,since,where)), mimetype='application/json')
     except Exception as e:
         logger.error("Exception\n" + str(e))
 
 if __name__ == '__main__':
     
     with open("banner.txt", 'r', encoding='utf-8') as banner:
-        logger.info('Initialisation...  v.0.02\n\n' + banner.read() + '\n')
+        logger.info('Initialisation...  v.0.03\n\n' + banner.read() + '\n')
     try:
         logger.info("LOG_LEVEL = %s" % logger.level)
     except: 
